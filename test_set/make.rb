@@ -14,7 +14,7 @@ test_set = {
   "string_hoge" => "hoge",
   "hash_1" => {host: "localhost", db: 1},
   "hash_2" =>  {"name" => "taro", "age" => 21},
-  "hash_3" => {user: {name: "matsumoto-yasunori", age: 31}, job: "voice-actor"},
+  "hash_3" => {user: {name: "matsumoto-yasunori", age: 57}, job: "voice-actor"},
 }
 
 test_set.each do |name, val|
