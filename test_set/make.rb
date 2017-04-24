@@ -15,6 +15,7 @@ test_set = {
   "hash_1" => {host: "localhost", db: 1},
   "hash_2" =>  {"name" => "taro", "age" => 21},
   "hash_3" => {user: {name: "matsumoto-yasunori", age: 57}, job: "voice-actor"},
+  "hash_4" => {one: { name: "matsumoto", age: 22}, two: {name: "matsumoto", age: 22}, three: {name: "kawasaki", age: 30}, four: {name: "kawasaki", age: 30}},
 }
 
 test_set.each do |name, val|

@@ -2,9 +2,9 @@ package ruby_marshal
 
 import (
 	"bufio"
-	"io"
 	"errors"
 	"fmt"
+	"io"
 )
 
 const (
@@ -17,7 +17,7 @@ func NewDecoder(r io.Reader) *Decoder {
 }
 
 type Decoder struct {
-	r *bufio.Reader
+	r       *bufio.Reader
 	objects []interface{}
 	symbols []string
 }
@@ -117,7 +117,7 @@ func (d *Decoder) parseString() string {
 }
 
 type Ivar struct {
-	str string
+	str      string
 	encoding string
 }
 
