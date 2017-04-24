@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"io"
 	"errors"
-	"reflect"
 	"fmt"
 )
 
@@ -27,38 +26,38 @@ func (d *Decoder) Read(p []byte) (int, error) {
 	return 0, nil //dummy
 }
 
-func (d *Decoder) unmarshal() reflect.Value {
+func (d *Decoder) unmarshal() interface{} {
 	typ, _ := d.r.ReadByte()
 	fmt.Printf("ruby type: %#v\n", typ)
 
 	switch typ {
 	case 0x30: // 0 - nil
-		return reflect.ValueOf((interface{})(nil))
+		return nil
 	case 0x54: // T - true
-		return reflect.ValueOf(true)
+		return true
 	case 0x46: // F - false
-		return reflect.ValueOf(false)
+		return false
 	case 0x69: // i - integer
-		return reflect.ValueOf(d.parseInt())
+		return d.parseInt()
 	case 0x22: // " - string
-		return reflect.ValueOf(d.parseString())
+		return d.parseString()
 	case 0x3A: // : - symbol
-		return reflect.ValueOf(d.parseSymbol())
+		return d.parseSymbol()
 	case 0x3B: // ; - symbol symlink
-		return reflect.ValueOf(d.unmarshal())
+		return d.parseSymLink()
 	case 0x40: // @ - object link
 	case 0x49: // I - IVAR (encoded string or regexp)
-		return reflect.ValueOf(d.parseIvar())
+		return d.parseIvar()
 	case 0x5B: // [ - array
 	case 0x6F: // o - object
 	case 0x7B: // { - hash
-		return reflect.ValueOf(d.parseHash())
+		return d.parseHash()
 	case 0x6C: // l - bignum
 	case 0x2F: // / - regexp
 	case 0x63: // c - class
 	case 0x6D: // m -module
 	default:
-		return reflect.ValueOf(nil)
+		return nil
 	}
 	panic("unsupported typecode: " + fmt.Sprintf("%#v", typ))
 }
@@ -99,6 +98,11 @@ func (d *Decoder) parseSymbol() string {
 	return symbol
 }
 
+func (d *Decoder) parseSymLink() string {
+	index := d.parseInt()
+	return d.symbols[index]
+}
+
 func (d *Decoder) parseObjectLink() interface{} {
 	index := d.parseInt()
 	return d.objects[index]
@@ -125,11 +129,9 @@ func (d *Decoder) parseIvar() string {
 	lengthOfSymbolChar := d.parseInt()
 
 	if lengthOfSymbolChar == 1 {
-		symbol = d.unmarshal().String() // symbol
+		symbol = d.unmarshal().(string) // symbol
 		//value := d.unmarshal().Bool() // value
-		fmt.Println("value unmarshal")
 		value := d.unmarshal()
-		fmt.Printf("value: %#v\n", value)
 
 		d.objects = append(d.objects, value)
 
@@ -142,7 +144,7 @@ func (d *Decoder) parseIvar() string {
 		}
 	}
 
-	strString := str.String()
+	strString := str.(string)
 	ivar := Ivar{strString, encoding}
 	d.objects = append(d.objects, ivar)
 	return strString
@@ -150,41 +152,29 @@ func (d *Decoder) parseIvar() string {
 
 func (d *Decoder) parseHash() interface{} {
 	size := d.parseInt()
-	hash := make(map[string]reflect.Value, size)
+	hash := make(map[string]interface{}, size)
 
 	for i := 0; i < int(size); i++ {
 		key := d.unmarshal()
 		value := d.unmarshal()
-		hash[key.String()] = value
+		hash[key.(string)] = value
 	}
 
 	return hash
 }
 
-func (d *Decoder) Decode(v interface{}) error {
+func (d *Decoder) Decode() (interface{}, error) {
 	major, err := d.r.ReadByte()
 	minor, err := d.r.ReadByte()
 
 	if err != nil {
-		return errors.New("cant decode MAJOR, MINOR version")
+		return nil, errors.New("cant decode MAJOR, MINOR version")
 	}
 
 	if major != SUPPORTED_MAJOR_VERSION || minor > SUPPORTED_MINOR_VERAION {
-		return errors.New("unsupported marshal version")
+		return nil, errors.New("unsupported marshal version")
 	}
 
-	val := reflect.ValueOf(v)
-
-	if val.Kind() != reflect.Ptr {
-		return errors.New("pointer need.")
-	}
-
-	r := d.unmarshal()
-	fmt.Printf("r: %#v\n", r)
-	if !r.IsValid() {
-		v = nil
-		return nil
-	}
-	val.Elem().Set(r)
-	return nil
+	result := d.unmarshal()
+	return result, nil
 }

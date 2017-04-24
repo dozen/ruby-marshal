@@ -4,7 +4,6 @@ import (
 	"testing"
 	"fmt"
 	"os"
-	"reflect"
 )
 
 func TestNewDecoder(t *testing.T) {
@@ -88,9 +87,8 @@ func TestNewDecoder(t *testing.T) {
 			panic(e.Error())
 		}
 
-		var v interface{}
-		//t.Logf("Initial: %#v\n", v)
-		if e := NewDecoder(fp).Decode(&v); e != nil {
+		v, e := NewDecoder(fp).Decode()
+		if e != nil {
 			t.Error(e.Error())
 		}
 		t.Logf("file: %#v\ttype: %#T\tvalue: %#v\n", file, v, v)
@@ -98,7 +96,7 @@ func TestNewDecoder(t *testing.T) {
 }
 
 func TestDecodeHash(t *testing.T) {
-	file := "session"
+	file := "hash_3"
 	fp, e := os.Open("test_set/" + file + ".dat")
 	defer func() {
 		fp.Close()
@@ -107,13 +105,14 @@ func TestDecodeHash(t *testing.T) {
 		panic(e.Error())
 	}
 
-	var v interface{}
 	//t.Logf("Initial: %#v\n", v)
-	if e := NewDecoder(fp).Decode(&v); e != nil {
+	v, e := NewDecoder(fp).Decode()
+	if e != nil {
 		t.Error(e.Error())
 	}
 
-	mapv := v.(map[string]reflect.Value)
 
-	t.Logf("%#v\n", mapv["user"].Interface().(map[string]reflect.Value)["account"].String())
+
+	t.Logf("%#T\n%#v\n", v, v)
+
 }
