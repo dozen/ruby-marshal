@@ -45,7 +45,7 @@ func (d *Decoder) unmarshal() reflect.Value {
 	case 0x3A: // : - symbol
 		return reflect.ValueOf(d.parseSymbol())
 	case 0x3B: // ; - symbol symlink
-		return reflect.ValueOf(d.unmarshal())
+		return reflect.ValueOf(d.parseSymLink())
 	case 0x40: // @ - object link
 	case 0x49: // I - IVAR (encoded string or regexp)
 		return reflect.ValueOf(d.parseIvar())
@@ -97,6 +97,11 @@ func (d *Decoder) parseSymbol() string {
 	symbol := d.parseString()
 	d.symbols = append(d.symbols, symbol)
 	return symbol
+}
+
+func (d *Decoder) parseSymLink() string {
+	index := d.parseInt()
+	return d.symbols[index]
 }
 
 func (d *Decoder) parseObjectLink() interface{} {
