@@ -27,38 +27,38 @@ func (d *Decoder) Read(p []byte) (int, error) {
 	return 0, nil //dummy
 }
 
-func (d *Decoder) unmarshal() reflect.Value {
+func (d *Decoder) unmarshal() interface{} {
 	typ, _ := d.r.ReadByte()
 	fmt.Printf("ruby type: %#v\n", typ)
 
 	switch typ {
 	case 0x30: // 0 - nil
-		return reflect.ValueOf((interface{})(nil))
+		return nil
 	case 0x54: // T - true
-		return reflect.ValueOf(true)
+		return true
 	case 0x46: // F - false
-		return reflect.ValueOf(false)
+		return false
 	case 0x69: // i - integer
-		return reflect.ValueOf(d.parseInt())
+		return d.parseInt()
 	case 0x22: // " - string
-		return reflect.ValueOf(d.parseString())
+		return d.parseString()
 	case 0x3A: // : - symbol
-		return reflect.ValueOf(d.parseSymbol())
+		return d.parseSymbol()
 	case 0x3B: // ; - symbol symlink
-		return reflect.ValueOf(d.parseSymLink())
+		return d.parseSymLink()
 	case 0x40: // @ - object link
 	case 0x49: // I - IVAR (encoded string or regexp)
-		return reflect.ValueOf(d.parseIvar())
+		return d.parseIvar()
 	case 0x5B: // [ - array
 	case 0x6F: // o - object
 	case 0x7B: // { - hash
-		return reflect.ValueOf(d.parseHash())
+		return d.parseHash()
 	case 0x6C: // l - bignum
 	case 0x2F: // / - regexp
 	case 0x63: // c - class
 	case 0x6D: // m -module
 	default:
-		return reflect.ValueOf(nil)
+		return nil
 	}
 	panic("unsupported typecode: " + fmt.Sprintf("%#v", typ))
 }
@@ -130,7 +130,7 @@ func (d *Decoder) parseIvar() string {
 	lengthOfSymbolChar := d.parseInt()
 
 	if lengthOfSymbolChar == 1 {
-		symbol = d.unmarshal().String() // symbol
+		symbol = d.unmarshal().(string) // symbol
 		//value := d.unmarshal().Bool() // value
 		fmt.Println("value unmarshal")
 		value := d.unmarshal()
@@ -147,7 +147,7 @@ func (d *Decoder) parseIvar() string {
 		}
 	}
 
-	strString := str.String()
+	strString := str.(string)
 	ivar := Ivar{strString, encoding}
 	d.objects = append(d.objects, ivar)
 	return strString
@@ -155,12 +155,12 @@ func (d *Decoder) parseIvar() string {
 
 func (d *Decoder) parseHash() interface{} {
 	size := d.parseInt()
-	hash := make(map[string]reflect.Value, size)
+	hash := make(map[string]interface{}, size)
 
 	for i := 0; i < int(size); i++ {
 		key := d.unmarshal()
 		value := d.unmarshal()
-		hash[key.String()] = value
+		hash[key.(string)] = value
 	}
 
 	return hash
@@ -186,10 +186,38 @@ func (d *Decoder) Decode(v interface{}) error {
 
 	r := d.unmarshal()
 	fmt.Printf("r: %#v\n", r)
-	if !r.IsValid() {
+	if r == nil {
 		v = nil
 		return nil
 	}
-	val.Elem().Set(r)
+
+	if val.Elem().Kind() == reflect.Struct {
+		MapToStruct(r, v)
+	}
+
 	return nil
+}
+
+func MapToStruct(mi interface{}, o interface{}) {
+	oValue := reflect.ValueOf(o).Elem()
+	oType := reflect.TypeOf(o).Elem()
+	m := mi.(map[string]interface{})
+
+	fmt.Printf("MapToStruct\n%#T\n%#v\n%#T\n%#v\n",
+		o, o,
+		oValue, oValue,
+	)
+
+	for i:= 0; i < oValue.NumField(); i++ {
+		field := oType.Field(i)
+		val := m[field.Tag.Get("ruby")]
+
+		if mm, ok := val.(map[string]interface{}); ok {
+			a := oValue.Field(i).Addr().Interface()
+			MapToStruct(mm, a)
+		} else {
+			oValue.Field(i).Set(reflect.ValueOf(val))
+		}
+	}
+
 }

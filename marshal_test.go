@@ -97,6 +97,22 @@ func TestNewDecoder(t *testing.T) {
 	}
 }
 
+func TestDecodeInt1(t *testing.T) {
+	file := "int_1"
+	fp, e := os.Open("test_set/" + file + ".dat")
+	defer func() {
+		fp.Close()
+	}()
+	if e != nil {
+		panic(e.Error())
+	}
+	var i int
+	if e := NewDecoder(fp).Decode(&i); e != nil {
+		t.Error(e.Error())
+	}
+	t.Logf("Type: %#T\t Value: %#v\n", i, i)
+}
+
 func TestDecodeHash(t *testing.T) {
 	file := "session"
 	fp, e := os.Open("test_set/" + file + ".dat")
@@ -107,13 +123,77 @@ func TestDecodeHash(t *testing.T) {
 		panic(e.Error())
 	}
 
-	var v interface{}
+	var v Session
 	//t.Logf("Initial: %#v\n", v)
 	if e := NewDecoder(fp).Decode(&v); e != nil {
 		t.Error(e.Error())
 	}
 
-	mapv := v.(map[string]reflect.Value)
+	t.Logf("%#v\n", v)
+}
 
-	t.Logf("%#v\n", mapv["user"].Interface().(map[string]reflect.Value)["account"].String())
+func TestMapToStruct(t *testing.T) {
+	m := interface{}(map[string]interface{}{
+		"name": "jack",
+		"age": 21,
+	})
+	u := User{}
+	MapToStruct(m, &u)
+	t.Logf("Map: %#v\n", m)
+	t.Logf("Map: %#v\n", u)
+
+	i := 1
+	vi := reflect.ValueOf(&i)
+	vvi := reflect.ValueOf(&vi)
+	//t.Logf("%#v\n%#v\n%#v\n", i, vi, vvi)
+
+	t.Logf("%#v\n%#v\n%#v\n",
+		i,
+		vi,
+		vvi.Elem(),
+	)
+}
+
+func TestRedisConfigUnMarshal(t *testing.T) {
+	file := "hash_1"
+	fp, e := os.Open("test_set/" + file + ".dat")
+	defer func() {
+		fp.Close()
+	}()
+
+	conf := RedisConfig{}
+	if e = NewDecoder(fp).Decode(&conf); e != nil {
+		t.Error(e.Error())
+	}
+	t.Logf("%#v\n", conf)
+}
+
+func TestSessionMarshal(t *testing.T) {
+	file := "session"
+	fp, e := os.Open("test_set/" + file + ".dat")
+	defer func() {
+		fp.Close()
+	}()
+
+	conf := Session{}
+	if e = NewDecoder(fp).Decode(&conf); e != nil {
+		t.Error(e.Error())
+	}
+	t.Logf("%#v\n", conf)
+}
+
+
+type RedisConfig struct {
+	Host string `ruby:"host"`
+	DB int `ruby:"db"`
+}
+
+type Session struct {
+	User  User   `ruby:"user"`
+	Flash string `ruby:"flash"`
+}
+
+type User struct {
+	Name string `ruby:"name"`
+	Age  int `ruby:"age"`
 }
