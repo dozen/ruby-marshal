@@ -180,7 +180,6 @@ func (d *Decoder) Decode(v interface{}) error {
 	}
 
 	r := d.unmarshal()
-	fmt.Printf("r: %#v\n", r)
 	if r == nil {
 		v = nil
 		return nil
@@ -188,6 +187,8 @@ func (d *Decoder) Decode(v interface{}) error {
 
 	if val.Elem().Kind() == reflect.Struct {
 		MapToStruct(r, v)
+	} else {
+		val.Elem().Set(reflect.ValueOf(r))
 	}
 
 	return nil
@@ -198,24 +199,17 @@ func MapToStruct(mi interface{}, o interface{}) {
 	oType := reflect.TypeOf(o).Elem()
 	m := mi.(map[string]interface{})
 
-	fmt.Printf("MapToStruct\n%#T\n%#v\n%#T\n%#v\n",
-		o, o,
-		oValue, oValue,
-	)
-
 	for i := 0; i < oValue.NumField(); i++ {
 		field := oType.Field(i)
 		val := m[field.Tag.Get("ruby")]
 
 		if mm, ok := val.(map[string]interface{}); ok {
 			if fieldObj := oValue.Field(i); fieldObj.Kind() == reflect.Ptr {
-				if !fieldObj.IsNil() {
-					MapToStruct(mm, fieldObj.Interface())
-				} else {
+				if fieldObj.IsNil() {
 					newObj := reflect.New(fieldObj.Type().Elem())
 					fieldObj.Set(newObj)
-					MapToStruct(mm, fieldObj.Interface())
 				}
+				MapToStruct(mm, fieldObj.Interface())
 			} else {
 				MapToStruct(mm, fieldObj.Addr().Interface())
 			}

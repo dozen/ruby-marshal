@@ -1,199 +1,219 @@
 package ruby_marshal
 
 import (
-	"fmt"
-	"os"
-	"reflect"
+	"bytes"
+	"encoding/hex"
 	"testing"
 )
 
-func TestNewDecoder(t *testing.T) {
-	testSet := map[string]func(interface{}){
-		"null": func(v interface{}) {
-			if v != nil {
-				t.Error("null is should nil")
-			}
-		},
-		"int_1": func(v interface{}) {
-			i := v.(int)
-			if i != 1 {
-				t.Error("int_1 should int 1")
-			}
-		},
-		"int_777": func(v interface{}) {
-			i := v.(int)
-			if i != 777 {
-				t.Error("int_777 should int 777")
-			}
-		},
-		"int_-777": func(v interface{}) {
-			i := v.(int)
-			if i != -777 {
-				t.Error("int_-777 should int -777")
-			}
-		},
-		"int_65537": func(v interface{}) {
-			i := v.(int)
-			if i != 65537 {
-				t.Error("int_65537 should int 65537")
-			}
-		},
-		"int_-65537": func(v interface{}) {
-			i := v.(int)
-			if i != -65537 {
-				t.Error("int_-65537 should int -65537")
-			}
-		},
-		"int_0": func(v interface{}) {
-			i := v.(int)
-			if i != 0 {
-				t.Error("int_0 should int 0")
-			}
-		},
-		"int_-5": func(v interface{}) {
-			i := v.(int)
-			if i != -5 {
-				t.Error("int_-5 should int -5")
-			}
-		},
-		"sym_name": func(v interface{}) {
-			i := v.(string)
-			if i != "name" {
-				t.Error("sym_name should string name")
-			}
-		},
-		"string_hoge": func(v interface{}) {
-			i := v.(string)
-			if i != "hoge" {
-				t.Error("string_hoge should string hoge")
-			}
-		},
-		"hash_1": func(v interface{}) {
-			i := v.(string)
-			if i != "hoge" {
-				t.Error("string_hoge should string hoge")
-			}
-		},
+const (
+	// null
+	Null = "040830"
+	// "hoge"
+	String = "0408492209686f6765063a064554"
+	// :name
+	SymName = "04083a096e616d65"
+	// 0
+	Int0 = "04086900"
+	// 1
+	Int1 = "04086906"
+	// 2
+	Int2 = "04086907"
+	// -5
+	IntM5 = "040869f6"
+	// 777
+	Int777 = "040869020903"
+	// -777
+	IntM777 = "040869fe9fe1"
+	// 65537
+	Int65537 = "04086903010001"
+	// -65537
+	IntM65537 = "040869fdfffffe"
+	// { host: "localhost", db: 1 }
+	Hash1 = "04087b073a09686f737449220e6c6f63616c686f7374063a0645543a0764626906"
+	// { "name" => "taro", "age" => 21 }
+	Hash2 = "04087b074922096e616d65063a0645544922097461726f063b0054492208616765063b0054691a"
+	// { user: { name: "matsumoto-yasunori", age: 57 }, job: "voice-actor" }
+	Hash3 = "04087b073a09757365727b073a096e616d654922176d617473756d6f746f2d796173756e6f7269063a0645543a08616765693e3a086a6f62492210766f6963652d6163746f72063b0754"
+)
+
+func TestDecodeNull(t *testing.T) {
+	b, err := hex.DecodeString(Null)
+	if err != nil {
+		t.Skip(err.Error())
 	}
+	var v interface{}
+	NewDecoder(bytes.NewReader(b)).Decode(&v)
+	if v != nil {
+		t.Errorf("not nil. Type: %#T\tValue: %#v", v, v)
+	}
+}
 
-	for file, eval := range testSet {
-		_ = eval
-		fmt.Println("\n" + file)
-		fp, e := os.Open("test_set/" + file + ".dat")
-		defer func() {
-			fp.Close()
-		}()
-		if e != nil {
-			panic(e.Error())
-		}
+func TestDecodeString(t *testing.T) {
+	b, err := hex.DecodeString(String)
+	if err != nil {
+		t.Skip(err.Error())
+	}
+	var v string
+	NewDecoder(bytes.NewReader(b)).Decode(&v)
+	if v != "hoge" {
+		t.Errorf("not \"hoge\". Type: %#T\tValue: %#v", v, v)
+	}
+}
 
-		var v interface{}
-		//t.Logf("Initial: %#v\n", v)
-		if e := NewDecoder(fp).Decode(&v); e != nil {
-			t.Error(e.Error())
-		}
-		t.Logf("file: %#v\ttype: %#T\tvalue: %#v\n", file, v, v)
+func TestDecodeSymName(t *testing.T) {
+	b, err := hex.DecodeString(SymName)
+	if err != nil {
+		t.Skip(err.Error())
+	}
+	var v string
+	NewDecoder(bytes.NewReader(b)).Decode(&v)
+	if v != "name" {
+		t.Errorf("not \"name\". Type: %#T\tValue: %#v", v, v)
+	}
+}
+
+func TestDecodeInt0(t *testing.T) {
+	b, err := hex.DecodeString(Int0)
+	if err != nil {
+		t.Skip(err.Error())
+	}
+	var v int
+	NewDecoder(bytes.NewReader(b)).Decode(&v)
+	if v != 0 {
+		t.Errorf("not 0. Type: %#T\tValue: %#v", v, v)
 	}
 }
 
 func TestDecodeInt1(t *testing.T) {
-	file := "int_1"
-	fp, e := os.Open("test_set/" + file + ".dat")
-	defer func() {
-		fp.Close()
-	}()
-	if e != nil {
-		panic(e.Error())
+	b, err := hex.DecodeString(Int1)
+	if err != nil {
+		t.Skip(err.Error())
 	}
-	var i int
-	if e := NewDecoder(fp).Decode(&i); e != nil {
-		t.Error(e.Error())
+	var v int
+	NewDecoder(bytes.NewReader(b)).Decode(&v)
+	if v != 1 {
+		t.Errorf("not 1. Type: %#T\tValue: %#v", v, v)
 	}
-	t.Logf("Type: %#T\t Value: %#v\n", i, i)
 }
 
-func TestDecodeHash(t *testing.T) {
-	file := "session"
-	fp, e := os.Open("test_set/" + file + ".dat")
-	defer func() {
-		fp.Close()
-	}()
-	if e != nil {
-		panic(e.Error())
+func TestDecodeInt2(t *testing.T) {
+	b, err := hex.DecodeString(Int2)
+	if err != nil {
+		t.Skip(err.Error())
 	}
-
-	var v Session
-	//t.Logf("Initial: %#v\n", v)
-	if e := NewDecoder(fp).Decode(&v); e != nil {
-		t.Error(e.Error())
+	var v int
+	NewDecoder(bytes.NewReader(b)).Decode(&v)
+	if v != 2 {
+		t.Errorf("not 2. Type: %#T\tValue: %#v", v, v)
 	}
-
-	t.Logf("%#v\n", v)
 }
 
-func TestMapToStruct(t *testing.T) {
-	m := interface{}(map[string]interface{}{
-		"name": "jack",
-		"age":  21,
-	})
-	u := User{}
-	MapToStruct(m, &u)
-	t.Logf("Map: %#v\n", m)
-	t.Logf("Map: %#v\n", u)
-
-	i := 1
-	vi := reflect.ValueOf(&i)
-	vvi := reflect.ValueOf(&vi)
-	//t.Logf("%#v\n%#v\n%#v\n", i, vi, vvi)
-
-	t.Logf("%#v\n%#v\n%#v\n",
-		i,
-		vi,
-		vvi.Elem(),
-	)
+func TestDecodeIntM5(t *testing.T) {
+	b, err := hex.DecodeString(IntM5)
+	if err != nil {
+		t.Skip(err.Error())
+	}
+	var v int
+	NewDecoder(bytes.NewReader(b)).Decode(&v)
+	if v != -5 {
+		t.Errorf("not 5. Type: %#T\tValue: %#v", v, v)
+	}
 }
 
-func TestRedisConfigUnMarshal(t *testing.T) {
-	file := "hash_1"
-	fp, e := os.Open("test_set/" + file + ".dat")
-	defer func() {
-		fp.Close()
-	}()
-
-	conf := RedisConfig{}
-	if e = NewDecoder(fp).Decode(&conf); e != nil {
-		t.Error(e.Error())
+func TestDecodeInt777(t *testing.T) {
+	b, err := hex.DecodeString(Int777)
+	if err != nil {
+		t.Skip(err.Error())
 	}
-	t.Logf("%#v\n", conf)
+	var v int
+	NewDecoder(bytes.NewReader(b)).Decode(&v)
+	if v != 777 {
+		t.Errorf("not 777. Type: %#T\tValue: %#v", v, v)
+	}
 }
 
-func TestSessionMarshal(t *testing.T) {
-	file := "session"
-	fp, e := os.Open("test_set/" + file + ".dat")
-	if e != nil {
-		panic(e.Error())
+func TestDecodeIntM777(t *testing.T) {
+	b, err := hex.DecodeString(IntM777)
+	if err != nil {
+		t.Skip(err.Error())
 	}
-	defer func() {
-		fp.Close()
-	}()
-
-	//session := new(Session)
-	//session := &Session{User: &User{}}
-	session := Session{}
-	if e = NewDecoder(fp).Decode(&session); e != nil {
-		t.Error(e.Error())
+	var v int
+	NewDecoder(bytes.NewReader(b)).Decode(&v)
+	if v != -777 {
+		t.Errorf("not -777. Type: %#T\tValue: %#v", v, v)
 	}
-	t.Logf("%#v, %#v\n", session, session.User)
 }
 
-type RedisConfig struct {
+func TestDecodeInt65537(t *testing.T) {
+	b, err := hex.DecodeString(Int65537)
+	if err != nil {
+		t.Skip(err.Error())
+	}
+	var v int
+	NewDecoder(bytes.NewReader(b)).Decode(&v)
+	if v != 65537 {
+		t.Errorf("not 0. Type: %#T\tValue: %#v", v, v)
+	}
+}
+
+func TestDecodeIntM65537(t *testing.T) {
+	b, err := hex.DecodeString(IntM65537)
+	if err != nil {
+		t.Skip(err.Error())
+	}
+	var v int
+	NewDecoder(bytes.NewReader(b)).Decode(&v)
+	if v != -65537 {
+		t.Errorf("not 0. Type: %#T\tValue: %#v", v, v)
+	}
+}
+
+func TestDecodeHash1(t *testing.T) {
+	b, err := hex.DecodeString(Hash1)
+	if err != nil {
+		t.Skip(err.Error())
+	}
+	var v RedisConf
+	NewDecoder(bytes.NewReader(b)).Decode(&v)
+	if !(v.Host == "localhost" && v.DB == 1) {
+		t.Errorf("not matched. Value: %#v", v)
+	}
+}
+
+type RedisConf struct {
 	Host string `ruby:"host"`
 	DB   int    `ruby:"db"`
 }
 
-type Session struct {
-	User  User   `ruby:"user"`
-	Flash string `ruby:"flash"`
+func TestDecodeHash2(t *testing.T) {
+	b, err := hex.DecodeString(Hash2)
+	if err != nil {
+		t.Skip(err.Error())
+	}
+	var v User
+	NewDecoder(bytes.NewReader(b)).Decode(&v)
+	if !(v.Name == "taro" && v.Age == 21) {
+		t.Errorf("not matched. Value: %#v", v)
+	}
+}
+
+func TestDecodeHash3(t *testing.T) {
+	b, err := hex.DecodeString(Hash3)
+	if err != nil {
+		t.Skip(err.Error())
+	}
+	var v Profile
+	NewDecoder(bytes.NewReader(b)).Decode(&v)
+
+	if !(v.Job == "voice-actor" && v.User.Name == "matsumoto-yasunori" && v.User.Age == 57) {
+		t.Errorf("not matched. Value: %#v", v)
+	}
+}
+
+type Profile struct {
+	User User   `ruby:"user"`
+	Job  string `ruby:"job"`
 }
 
 type User struct {
