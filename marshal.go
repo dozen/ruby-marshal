@@ -2,10 +2,10 @@ package ruby_marshal
 
 import (
 	"bufio"
-	"io"
 	"errors"
-	"reflect"
 	"fmt"
+	"io"
+	"reflect"
 )
 
 const (
@@ -18,7 +18,7 @@ func NewDecoder(r io.Reader) *Decoder {
 }
 
 type Decoder struct {
-	r *bufio.Reader
+	r       *bufio.Reader
 	objects []interface{}
 	symbols []string
 }
@@ -29,7 +29,6 @@ func (d *Decoder) Read(p []byte) (int, error) {
 
 func (d *Decoder) unmarshal() interface{} {
 	typ, _ := d.r.ReadByte()
-	fmt.Printf("ruby type: %#v\n", typ)
 
 	switch typ {
 	case 0x30: // 0 - nil
@@ -113,12 +112,11 @@ func (d *Decoder) parseString() string {
 	len := d.parseInt()
 	str := make([]byte, len)
 	d.r.Read(str)
-	fmt.Printf("str: %#v\n", str)
 	return string(str)
 }
 
 type Ivar struct {
-	str string
+	str      string
 	encoding string
 }
 
@@ -131,10 +129,7 @@ func (d *Decoder) parseIvar() string {
 
 	if lengthOfSymbolChar == 1 {
 		symbol = d.unmarshal().(string) // symbol
-		//value := d.unmarshal().Bool() // value
-		fmt.Println("value unmarshal")
 		value := d.unmarshal()
-		fmt.Printf("value: %#v\n", value)
 
 		d.objects = append(d.objects, value)
 
@@ -208,13 +203,22 @@ func MapToStruct(mi interface{}, o interface{}) {
 		oValue, oValue,
 	)
 
-	for i:= 0; i < oValue.NumField(); i++ {
+	for i := 0; i < oValue.NumField(); i++ {
 		field := oType.Field(i)
 		val := m[field.Tag.Get("ruby")]
 
 		if mm, ok := val.(map[string]interface{}); ok {
-			a := oValue.Field(i).Addr().Interface()
-			MapToStruct(mm, a)
+			if fieldObj := oValue.Field(i); fieldObj.Kind() == reflect.Ptr {
+				if !fieldObj.IsNil() {
+					MapToStruct(mm, fieldObj.Interface())
+				} else {
+					newObj := reflect.New(fieldObj.Type().Elem())
+					fieldObj.Set(newObj)
+					MapToStruct(mm, fieldObj.Interface())
+				}
+			} else {
+				MapToStruct(mm, fieldObj.Addr().Interface())
+			}
 		} else {
 			oValue.Field(i).Set(reflect.ValueOf(val))
 		}

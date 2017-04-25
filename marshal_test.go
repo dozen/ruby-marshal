@@ -1,80 +1,79 @@
 package ruby_marshal
 
 import (
-	"testing"
 	"fmt"
 	"os"
 	"reflect"
+	"testing"
 )
 
 func TestNewDecoder(t *testing.T) {
-	testSet := map[string] func(interface{}) {
-		"null": func (v interface{}) {
+	testSet := map[string]func(interface{}){
+		"null": func(v interface{}) {
 			if v != nil {
 				t.Error("null is should nil")
 			}
 		},
-		"int_1": func (v interface{}) {
+		"int_1": func(v interface{}) {
 			i := v.(int)
 			if i != 1 {
 				t.Error("int_1 should int 1")
 			}
 		},
-		"int_777": func (v interface{}) {
+		"int_777": func(v interface{}) {
 			i := v.(int)
 			if i != 777 {
 				t.Error("int_777 should int 777")
 			}
 		},
-		"int_-777": func (v interface{}) {
+		"int_-777": func(v interface{}) {
 			i := v.(int)
 			if i != -777 {
 				t.Error("int_-777 should int -777")
 			}
 		},
-		"int_65537": func (v interface{}) {
+		"int_65537": func(v interface{}) {
 			i := v.(int)
 			if i != 65537 {
 				t.Error("int_65537 should int 65537")
 			}
 		},
-		"int_-65537": func (v interface{}) {
+		"int_-65537": func(v interface{}) {
 			i := v.(int)
 			if i != -65537 {
 				t.Error("int_-65537 should int -65537")
 			}
 		},
-		"int_0": func (v interface{}) {
+		"int_0": func(v interface{}) {
 			i := v.(int)
 			if i != 0 {
 				t.Error("int_0 should int 0")
 			}
 		},
-		"int_-5": func (v interface{}) {
+		"int_-5": func(v interface{}) {
 			i := v.(int)
 			if i != -5 {
 				t.Error("int_-5 should int -5")
 			}
 		},
-		"sym_name": func (v interface{}) {
+		"sym_name": func(v interface{}) {
 			i := v.(string)
 			if i != "name" {
 				t.Error("sym_name should string name")
 			}
 		},
-		"string_hoge": func (v interface{}) {
+		"string_hoge": func(v interface{}) {
 			i := v.(string)
 			if i != "hoge" {
 				t.Error("string_hoge should string hoge")
 			}
 		},
-		"hash_1": func (v interface{}) {
+		"hash_1": func(v interface{}) {
 			i := v.(string)
 			if i != "hoge" {
 				t.Error("string_hoge should string hoge")
 			}
 		},
-
 	}
 
 	for file, eval := range testSet {
@@ -135,7 +134,7 @@ func TestDecodeHash(t *testing.T) {
 func TestMapToStruct(t *testing.T) {
 	m := interface{}(map[string]interface{}{
 		"name": "jack",
-		"age": 21,
+		"age":  21,
 	})
 	u := User{}
 	MapToStruct(m, &u)
@@ -171,21 +170,25 @@ func TestRedisConfigUnMarshal(t *testing.T) {
 func TestSessionMarshal(t *testing.T) {
 	file := "session"
 	fp, e := os.Open("test_set/" + file + ".dat")
+	if e != nil {
+		panic(e.Error())
+	}
 	defer func() {
 		fp.Close()
 	}()
 
-	conf := Session{}
-	if e = NewDecoder(fp).Decode(&conf); e != nil {
+	//session := new(Session)
+	//session := &Session{User: &User{}}
+	session := Session{}
+	if e = NewDecoder(fp).Decode(&session); e != nil {
 		t.Error(e.Error())
 	}
-	t.Logf("%#v\n", conf)
+	t.Logf("%#v, %#v\n", session, session.User)
 }
-
 
 type RedisConfig struct {
 	Host string `ruby:"host"`
-	DB int `ruby:"db"`
+	DB   int    `ruby:"db"`
 }
 
 type Session struct {
@@ -195,5 +198,5 @@ type Session struct {
 
 type User struct {
 	Name string `ruby:"name"`
-	Age  int `ruby:"age"`
+	Age  int    `ruby:"age"`
 }
