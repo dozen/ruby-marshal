@@ -22,7 +22,7 @@ NewDecoder(bytes.NewReader(b)).Decode(&v)
 
 ## Usage
 
-Follow [marshal_test.go](blob/master/marshal_test.go).
+Follow [marshal_test.go](marshal_test.go).
 
 ## Reference
 
