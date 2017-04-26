@@ -65,7 +65,7 @@ func (d *Decoder) unmarshal() interface{} {
 func (d *Decoder) parseInt() int {
 	var result int
 	b, _ := d.r.ReadByte()
-	c := int(b)
+	c := int(int8(b))
 	if c == 0 {
 		return 0
 	} else if 5 < c && c < 128 {
@@ -74,19 +74,21 @@ func (d *Decoder) parseInt() int {
 		return c + 5
 	}
 
-	if c > 0 {
+	cInt8 := int8(b)
+	if cInt8 > 0 {
 		result = 0
-		for i := 0; i < c; i++ {
+		for i := int8(0); i < cInt8; i++ {
 			n, _ := d.r.ReadByte()
 			result |= int(uint(n) << (8 * uint(i)))
 		}
 	} else {
-		c = -c
 		result = -1
+		c = -c
 		for i := 0; i < c; i++ {
 			n, _ := d.r.ReadByte()
 			result &= ^(0xff << (8 * uint(i)))
 			result |= int(uint(n) << (8 * uint(i)))
+			fmt.Printf("%#v:\t%#v\n", i, result)
 		}
 	}
 	return result

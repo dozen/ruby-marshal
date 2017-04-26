@@ -165,7 +165,7 @@ func TestDecodeIntM65537(t *testing.T) {
 	var v int
 	NewDecoder(bytes.NewReader(b)).Decode(&v)
 	if v != -65537 {
-		t.Errorf("not 0. Type: %#T\tValue: %#v", v, v)
+		t.Errorf("not -65537. Type: %#T\tValue: %#v", v, v)
 	}
 }
 
