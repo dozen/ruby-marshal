@@ -204,6 +204,9 @@ func MapToStruct(mi interface{}, o interface{}) {
 	for i := 0; i < oValue.NumField(); i++ {
 		field := oType.Field(i)
 		val := m[field.Tag.Get("ruby")]
+		if val == nil {
+			continue
+		}
 
 		if mm, ok := val.(map[string]interface{}); ok {
 			if fieldObj := oValue.Field(i); fieldObj.Kind() == reflect.Ptr {
