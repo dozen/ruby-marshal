@@ -86,9 +86,8 @@ func (d *Decoder) parseInt() int {
 		c = -c
 		for i := 0; i < c; i++ {
 			n, _ := d.r.ReadByte()
-			result &= ^(0xff << (8 * uint(i)))
-			result |= int(uint(n) << (8 * uint(i)))
-			fmt.Printf("%#v:\t%#v\n", i, result)
+			result &= ^(0xff << uint(8 * i))
+			result |= int(n) << uint(8 * i)
 		}
 	}
 	return result
