@@ -3,6 +3,7 @@ package ruby_marshal
 import (
 	"bytes"
 	"encoding/hex"
+	"fmt"
 	"testing"
 )
 
@@ -219,4 +220,20 @@ type Profile struct {
 type User struct {
 	Name string `ruby:"name"`
 	Age  int    `ruby:"age"`
+}
+
+func TestNewEncoder(t *testing.T) {
+	w := bytes.NewBuffer([]byte{})
+	e := NewEncoder(w)
+	v := "hello, my name is matsumoto yasunori."
+	if err := e.Encode(&v); err != nil {
+		t.Error(err.Error())
+	}
+
+	encoded := w.Bytes()
+	fmt.Printf("encoded:\t%#v\n", encoded)
+
+	var str string
+	NewDecoder(bytes.NewReader(encoded)).Decode(&str)
+	fmt.Printf("%#x\n%#v\n", str, str)
 }

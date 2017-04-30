@@ -23,10 +23,6 @@ type Decoder struct {
 	symbols []string
 }
 
-func (d *Decoder) Read(p []byte) (int, error) {
-	return 0, nil //dummy
-}
-
 func (d *Decoder) unmarshal() interface{} {
 	typ, _ := d.r.ReadByte()
 
@@ -86,8 +82,8 @@ func (d *Decoder) parseInt() int {
 		c = -c
 		for i := 0; i < c; i++ {
 			n, _ := d.r.ReadByte()
-			result &= ^(0xff << uint(8 * i))
-			result |= int(n) << uint(8 * i)
+			result &= ^(0xff << uint(8*i))
+			result |= int(n) << uint(8*i)
 		}
 	}
 	return result
@@ -222,4 +218,96 @@ func MapToStruct(mi interface{}, o interface{}) {
 		}
 	}
 
+}
+
+type Encoder struct {
+	w       *bufio.Writer
+	symbols []string
+	objects []interface{}
+}
+
+func NewEncoder(w io.Writer) *Encoder {
+	return &Encoder{w: bufio.NewWriter(w)}
+}
+
+func (e *Encoder) Encode(v interface{}) error {
+	if _, err := e.w.Write([]byte{SUPPORTED_MAJOR_VERSION, SUPPORTED_MINOR_VERAION}); err != nil {
+		return err
+	}
+
+	e.marshal(v)
+
+	e.w.Flush()
+	return nil
+}
+
+func (e *Encoder) marshal(v interface{}) error {
+	vKind := reflect.TypeOf(v).Kind()
+	val := reflect.ValueOf(v)
+	typ := reflect.TypeOf(v)
+
+	if vKind == reflect.Ptr {
+		val = val.Elem()
+		typ = typ.Elem()
+	}
+
+	switch typ.Kind() {
+	case reflect.String:
+		e.w.WriteByte('"')
+		return e.encString(val.String())
+	case reflect.Int:
+		e.w.WriteByte('i')
+		return e.encInt(int(val.Int()))
+	}
+	return nil
+}
+
+func (e *Encoder) encString(str string) error {
+	if err := e.encInt(len(str)); err != nil {
+		return err
+	}
+
+	_, err := e.w.WriteString(str)
+	return err
+}
+
+func (e *Encoder) encInt(i int) error {
+	var len int
+
+	if i == 0 {
+		return e.w.WriteByte(0)
+	} else if 1 < i && i < 123 {
+		return e.w.WriteByte(byte(i + 5))
+	} else if -124 < i && i < -1 {
+		return e.w.WriteByte(byte(i - 5))
+	} else if 122 < i && i <= 0xff {
+		len = 1
+	} else if 0xff < i && i <= 0xffff {
+		len = 2
+	} else if 0xffff < i && i <= 0xffffff {
+		len = 3
+	} else if 0xffffff < i && i <= 0x3fffffff {
+		//for compatibility with 32bit Ruby, Fixnum should be less than 1073741824
+		len = 4
+	} else if -0x100 <= i && i < -123 {
+		len = -1
+	} else if -0x10000 <= i && i < -0x100 {
+		len = -2
+	} else if -0x1000000 <= i && i < -0x100000 {
+		len = -3
+	} else if -0x40000000 <= i && i < -0x1000000 {
+		//for compatibility with 32bit Ruby, Fixnum should be greater than -1073741825
+		len = -4
+	}
+
+	e.w.WriteByte(byte(len))
+	if len < 0 {
+		len = -len
+	}
+
+	for c := 0; c < len; c++ {
+		e.w.WriteByte(byte(i >> uint(8*c) & 0xff))
+	}
+
+	return nil
 }
