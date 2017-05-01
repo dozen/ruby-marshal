@@ -112,7 +112,7 @@ func (d *Decoder) parseString() string {
 	return string(str)
 }
 
-type Ivar struct {
+type iVar struct {
 	str      string
 	encoding string
 }
@@ -121,16 +121,16 @@ func (d *Decoder) parseIvar() string {
 	str := d.unmarshal()
 
 	var encoding string
-	var symbol string
+	var symbol interface{}
 	lengthOfSymbolChar := d.parseInt()
 
 	if lengthOfSymbolChar == 1 {
-		symbol = d.unmarshal().(string) // symbol
+		symbol = d.unmarshal()
 		value := d.unmarshal()
 
 		d.objects = append(d.objects, value)
 
-		if string(symbol) == "E" {
+		if symbol.(string) == "E" {
 			/*if value == true {
 				encoding = "utf8"
 			} else {
@@ -140,7 +140,7 @@ func (d *Decoder) parseIvar() string {
 	}
 
 	strString := str.(string)
-	ivar := Ivar{strString, encoding}
+	ivar := iVar{strString, encoding}
 	d.objects = append(d.objects, ivar)
 	return strString
 }
@@ -221,13 +221,22 @@ func MapToStruct(mi interface{}, o interface{}) {
 }
 
 type Encoder struct {
-	w       *bufio.Writer
-	symbols []string
-	objects []interface{}
+	w            *bufio.Writer
+	symbols      map[string]int
+	symbolsIndex int
+	objects      map[*interface{}]int
+	objectsIndex int
+	stringObj    iVar
 }
 
 func NewEncoder(w io.Writer) *Encoder {
-	return &Encoder{w: bufio.NewWriter(w)}
+	return &Encoder{
+		w:            bufio.NewWriter(w),
+		symbols:      map[string]int{},
+		symbolsIndex: 0,
+		objects:      map[*interface{}]int{},
+		objectsIndex: 0,
+	}
 }
 
 func (e *Encoder) Encode(v interface{}) error {
@@ -252,23 +261,23 @@ func (e *Encoder) marshal(v interface{}) error {
 	}
 
 	switch typ.Kind() {
-	case reflect.String:
-		e.w.WriteByte('"')
-		return e.encString(val.String())
+	case reflect.Bool:
+		return e.encBool(val.Bool())
 	case reflect.Int:
 		e.w.WriteByte('i')
 		return e.encInt(int(val.Int()))
+	case reflect.String:
+		e.w.WriteByte('I')
+		return e.encString(val.String())
 	}
 	return nil
 }
 
-func (e *Encoder) encString(str string) error {
-	if err := e.encInt(len(str)); err != nil {
-		return err
+func (e *Encoder) encBool(val bool) error {
+	if val {
+		return e.w.WriteByte('T')
 	}
-
-	_, err := e.w.WriteString(str)
-	return err
+	return e.w.WriteByte('F')
 }
 
 func (e *Encoder) encInt(i int) error {
@@ -276,9 +285,9 @@ func (e *Encoder) encInt(i int) error {
 
 	if i == 0 {
 		return e.w.WriteByte(0)
-	} else if 1 < i && i < 123 {
+	} else if 0 < i && i < 123 {
 		return e.w.WriteByte(byte(i + 5))
-	} else if -124 < i && i < -1 {
+	} else if -124 < i && i <= -1 {
 		return e.w.WriteByte(byte(i - 5))
 	} else if 122 < i && i <= 0xff {
 		len = 1
@@ -300,14 +309,71 @@ func (e *Encoder) encInt(i int) error {
 		len = -4
 	}
 
-	e.w.WriteByte(byte(len))
+	if err := e.w.WriteByte(byte(len)); err != nil {
+		return err
+	}
 	if len < 0 {
 		len = -len
 	}
 
 	for c := 0; c < len; c++ {
-		e.w.WriteByte(byte(i >> uint(8*c) & 0xff))
+		if err := e.w.WriteByte(byte(i >> uint(8*c) & 0xff)); err != nil {
+			return err
+		}
 	}
 
+	return nil
+}
+
+func (e *Encoder) encRawString(str string) error {
+	if err := e.encInt(len(str)); err != nil {
+		return err
+	}
+
+	_, err := e.w.WriteString(str)
+	return err
+}
+
+func (e *Encoder) encString(str string) error {
+	if err := e.w.WriteByte('"'); err != nil {
+		return err
+	}
+	if err := e.encRawString(str); err != nil {
+		return err
+	}
+
+	//symbol :E 1個 なので、 Fixnum(1)を書き出す
+	if err := e.encInt(1); err != nil {
+		return err
+	}
+
+	if err := e.encSymbol("E"); err != nil {
+		return err
+	}
+	return e.encBool(true)
+}
+
+func (e *Encoder) encSymbol(str string) error {
+	if index, ok := e.symbols[str]; ok {
+		if err := e.w.WriteByte(';'); err != nil {
+			return err
+		}
+		return e.encInt(index)
+	}
+
+	e.symbols[str] = e.symbolsIndex
+	e.symbolsIndex++
+
+	if err := e.w.WriteByte(':'); err != nil {
+		return err
+	}
+	if err := e.encInt(len(str)); err != nil {
+		return err
+	}
+	_, err := e.w.WriteString(str)
+	return err
+}
+
+func (e *Encoder) encObject() error {
 	return nil
 }

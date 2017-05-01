@@ -225,13 +225,14 @@ type User struct {
 func TestNewEncoder(t *testing.T) {
 	w := bytes.NewBuffer([]byte{})
 	e := NewEncoder(w)
-	v := "hello, my name is matsumoto yasunori."
+	v := "めっちゃ日本語"
 	if err := e.Encode(&v); err != nil {
 		t.Error(err.Error())
 	}
 
 	encoded := w.Bytes()
 	fmt.Printf("encoded:\t%#v\n", encoded)
+	fmt.Printf("encoded:\t%x\n", encoded)
 
 	var str string
 	NewDecoder(bytes.NewReader(encoded)).Decode(&str)
