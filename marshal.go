@@ -3,7 +3,6 @@ package ruby_marshal
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"io"
 	"reflect"
 )
@@ -36,38 +35,39 @@ func NewDecoder(r io.Reader) *Decoder {
 
 type Decoder struct {
 	r       *bufio.Reader
-	objects []interface{}
+	objects []*reflect.Value
 	symbols []string
 }
 
-func (d *Decoder) unmarshal() interface{} {
+func (d *Decoder) unmarshal() *reflect.Value {
 	typ, _ := d.r.ReadByte()
+
+	var v reflect.Value
 
 	switch typ {
 	case NIL_SIGN: // 0 - nil
-		return nil
 	case TRUE_SIGN: // T - true
-		return true
+		v.SetBool(true)
 	case FALSE_SIGN: // F - false
-		return false
+		v.SetBool(false)
 	case FIXNUM_SIGN: // i - integer
-		return d.parseInt()
+		d.parseInt(&v)
 	case RAWSTRING_SIGN: // " - string
-		return d.parseString()
+		d.parseString(&v)
 	case SYMBOL_SIGN: // : - symbol
-		return d.parseSymbol()
+		d.parseSymbol(&v)
 	case SYMBOL_LINK_SIGN: // ; - symbol symlink
-		return d.parseSymLink()
+		d.parseSymLink(&v)
 	case OBJECT_LINK_SIGN: // @ - object link
 		panic("not supported.")
 	case IVAR_SIGN: // I - IVAR (encoded string or regexp)
-		return d.parseIvar()
+		d.parseIvar(&v)
 	case ARRAY_SIGN: // [ - array
 		panic("not supported.")
 	case OBJECT_SIGN: // o - object
 		panic("not supported.")
 	case HASH_SIGN: // { - hash
-		return d.parseHash()
+		d.parseHash(&v)
 	case BIGNUM_SIGN: // l - bignum
 		panic("not supported.")
 	case REGEXP_SIGN: // / - regexp
@@ -79,93 +79,96 @@ func (d *Decoder) unmarshal() interface{} {
 	default:
 		return nil
 	}
+	return &v
 }
 
-func (d *Decoder) parseInt() int {
+func (d *Decoder) parseInt(v *reflect.Value) {
 	var result int
 	b, _ := d.r.ReadByte()
 	c := int(int8(b))
 	if c == 0 {
-		return 0
-	} else if 5 < c && c < 128 {
-		return c - 5
-	} else if -129 < c && c < -5 {
-		return c + 5
-	}
-	cInt8 := int8(b)
-	if cInt8 > 0 {
 		result = 0
-		for i := int8(0); i < cInt8; i++ {
-			n, _ := d.r.ReadByte()
-			result |= int(uint(n) << (8 * uint(i)))
-		}
+	} else if 5 < c && c < 128 {
+		result = c - 5
+	} else if -129 < c && c < -5 {
+		result = c + 5
 	} else {
-		result = -1
-		c = -c
-		for i := 0; i < c; i++ {
-			n, _ := d.r.ReadByte()
-			result &= ^(0xff << uint(8*i))
-			result |= int(n) << uint(8*i)
+		cInt8 := int8(b)
+		if cInt8 > 0 {
+			result = 0
+			for i := int8(0); i < cInt8; i++ {
+				n, _ := d.r.ReadByte()
+				result |= int(uint(n) << (8 * uint(i)))
+			}
+		} else {
+			result = -1
+			c = -c
+			for i := 0; i < c; i++ {
+				n, _ := d.r.ReadByte()
+				result &= ^(0xff << uint(8*i))
+				result |= int(n) << uint(8*i)
+			}
 		}
 	}
-	return result
+
+	v.SetInt(int64(result))
 }
 
-func (d *Decoder) parseSymbol() string {
-	symbol := d.parseString()
-	d.symbols = append(d.symbols, symbol)
-	return symbol
+func (d *Decoder) parseSymbol(v *reflect.Value) {
+	d.parseString(v)
+	d.symbols = append(d.symbols, v.String())
 }
 
-func (d *Decoder) parseSymLink() string {
-	index := d.parseInt()
-	return d.symbols[index]
+func (d *Decoder) parseSymLink(v *reflect.Value) {
+	var index reflect.Value
+	d.parseInt(&index)
+	v.SetString(d.symbols[index.Int()])
 }
 
-func (d *Decoder) parseObjectLink() interface{} {
-	index := d.parseInt()
-	return d.objects[index]
+func (d *Decoder) parseObjectLink(v *reflect.Value) {
+	var index reflect.Value
+	d.parseInt(&index)
+	v = d.objects[index.Int()]
 }
 
-func (d *Decoder) parseString() string {
-	len := d.parseInt()
-	str := make([]byte, len)
+func (d *Decoder) parseString(v *reflect.Value) {
+	d.parseInt(v)
+	str := make([]byte, v.Int())
 	d.r.Read(str)
-	return string(str)
 }
 
 type iVar struct {
 	str string
 }
 
-func (d *Decoder) parseIvar() string {
-	str := d.unmarshal()
+func (d *Decoder) parseIvar(v *reflect.Value) {
+	v = d.unmarshal()
 
-	symbolCharLen := d.parseInt()
+	var instanceValLen reflect.Value
+	d.parseInt(&instanceValLen)
 
-	if symbolCharLen == 1 {
-		symbol := d.unmarshal().(string) // :E
+	if instanceValLen.Int() == 1 {
+		symbol := d.unmarshal() 	 // :E
 		_ = d.unmarshal()                // T
-		d.symbols = append(d.symbols, symbol)
+		d.symbols = append(d.symbols, symbol.String())
 	}
 
-	strString := str.(string)
-	ivar := iVar{strString}
-	d.objects = append(d.objects, ivar)
-	return strString
+	ivar := iVar{v.String()}
+	d.objects = append(d.objects, &reflect.ValueOf(&ivar))
 }
 
-func (d *Decoder) parseHash() interface{} {
-	size := d.parseInt()
-	hash := make(map[string]interface{}, size)
+func (d *Decoder) parseHash(v *reflect.Value) {
+	var size reflect.Value
+	d.parseInt(&size)
+	hash := make(map[string]interface{}, size.Int())
 
 	for i := 0; i < int(size); i++ {
 		key := d.unmarshal()
 		value := d.unmarshal()
-		hash[key.(string)] = value
+		hash[key.String()] = value
 	}
 
-	return hash
+	v = &reflect.ValueOf(hash)
 }
 
 func (d *Decoder) Decode(v interface{}) error {
