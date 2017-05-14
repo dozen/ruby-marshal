@@ -3,7 +3,6 @@ package ruby_marshal
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"io"
 	"reflect"
 )
