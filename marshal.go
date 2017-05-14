@@ -46,10 +46,11 @@ func (d *Decoder) unmarshal() *reflect.Value {
 
 	switch typ {
 	case NIL_SIGN: // 0 - nil
+		v = reflect.ValueOf(nil)
 	case TRUE_SIGN: // T - true
-		v.SetBool(true)
+		v = reflect.ValueOf(true)
 	case FALSE_SIGN: // F - false
-		v.SetBool(false)
+		v = reflect.ValueOf(false)
 	case FIXNUM_SIGN: // i - integer
 		d.parseInt(&v)
 	case RAWSTRING_SIGN: // " - string
@@ -111,30 +112,33 @@ func (d *Decoder) parseInt(v *reflect.Value) {
 		}
 	}
 
-	v.SetInt(int64(result))
+	*v = reflect.ValueOf(&result)
 }
 
 func (d *Decoder) parseSymbol(v *reflect.Value) {
 	d.parseString(v)
-	d.symbols = append(d.symbols, v.String())
+	d.symbols = append(d.symbols, v.Elem().String())
 }
 
 func (d *Decoder) parseSymLink(v *reflect.Value) {
-	var index reflect.Value
+	index := reflect.ValueOf(new(int))
 	d.parseInt(&index)
-	v.SetString(d.symbols[index.Int()])
+	v.Elem().SetString(d.symbols[index.Elem().Int()])
 }
 
 func (d *Decoder) parseObjectLink(v *reflect.Value) {
-	var index reflect.Value
+	index := reflect.ValueOf(new(int))
 	d.parseInt(&index)
-	v = d.objects[index.Int()]
+	v = d.objects[index.Elem().Int()]
 }
 
 func (d *Decoder) parseString(v *reflect.Value) {
-	d.parseInt(v)
-	str := make([]byte, v.Int())
-	d.r.Read(str)
+	var len reflect.Value
+	d.parseInt(&len)
+	b := make([]byte, len.Elem().Int())
+	d.r.Read(b)
+	str := string(b)
+	*v = reflect.ValueOf(&str)
 }
 
 type iVar struct {
@@ -142,33 +146,35 @@ type iVar struct {
 }
 
 func (d *Decoder) parseIvar(v *reflect.Value) {
-	v = d.unmarshal()
+	*v = *d.unmarshal()
 
-	var instanceValLen reflect.Value
-	d.parseInt(&instanceValLen)
+	var varLen reflect.Value
+	d.parseInt(&varLen)
 
-	if instanceValLen.Int() == 1 {
-		symbol := d.unmarshal() 	 // :E
-		_ = d.unmarshal()                // T
-		d.symbols = append(d.symbols, symbol.String())
+	if varLen.Elem().Int() == 1 {
+		symbol := d.unmarshal() // :E
+		_ = d.unmarshal()       // T
+		d.symbols = append(d.symbols, symbol.Elem().String())
 	}
 
-	ivar := iVar{v.String()}
-	d.objects = append(d.objects, &reflect.ValueOf(&ivar))
+	ivar := reflect.ValueOf(&iVar{v.Elem().String()})
+	d.objects = append(d.objects, &ivar)
 }
 
 func (d *Decoder) parseHash(v *reflect.Value) {
-	var size reflect.Value
-	d.parseInt(&size)
-	hash := make(map[string]interface{}, size.Int())
+	var sizeV reflect.Value
+	d.parseInt(&sizeV)
+	size := int(sizeV.Elem().Int())
+	hash := make(map[string]interface{}, size)
 
-	for i := 0; i < int(size); i++ {
+	for i := 0; i < size; i++ {
 		key := d.unmarshal()
 		value := d.unmarshal()
 		hash[key.String()] = value
 	}
 
-	v = &reflect.ValueOf(hash)
+	hashV := reflect.ValueOf(hash)
+	v = &hashV
 }
 
 func (d *Decoder) Decode(v interface{}) error {
@@ -196,8 +202,10 @@ func (d *Decoder) Decode(v interface{}) error {
 
 	if val.Elem().Kind() == reflect.Struct {
 		MapToStruct(r, v)
+	} else if *r == reflect.ValueOf(nil) {
+		v = nil
 	} else {
-		val.Elem().Set(reflect.ValueOf(r))
+		val.Elem().Set(r.Elem())
 	}
 
 	return nil
