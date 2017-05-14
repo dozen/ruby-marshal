@@ -10,7 +10,24 @@ import (
 
 const (
 	SUPPORTED_MAJOR_VERSION = 4
-	SUPPORTED_MINOR_VERAION = 8
+	SUPPORTED_MINOR_VERSION = 8
+
+	NIL_SIGN         = '0'
+	TRUE_SIGN        = 'T'
+	FALSE_SIGN       = 'F'
+	FIXNUM_SIGN      = 'i'
+	RAWSTRING_SIGN   = '"'
+	SYMBOL_SIGN      = ':'
+	SYMBOL_LINK_SIGN = ';'
+	OBJECT_SIGN      = 'o'
+	OBJECT_LINK_SIGN = '@'
+	ARRAY_SIGN       = '['
+	IVAR_SIGN        = 'I'
+	HASH_SIGN        = '{'
+	BIGNUM_SIGN      = 'l'
+	REGEXP_SIGN      = '/'
+	CLASS_SIGN       = 'c'
+	MODULE_SIGN      = 'm'
 )
 
 func NewDecoder(r io.Reader) *Decoder {
@@ -27,35 +44,41 @@ func (d *Decoder) unmarshal() interface{} {
 	typ, _ := d.r.ReadByte()
 
 	switch typ {
-	case 0x30: // 0 - nil
+	case NIL_SIGN: // 0 - nil
 		return nil
-	case 0x54: // T - true
+	case TRUE_SIGN: // T - true
 		return true
-	case 0x46: // F - false
+	case FALSE_SIGN: // F - false
 		return false
-	case 0x69: // i - integer
+	case FIXNUM_SIGN: // i - integer
 		return d.parseInt()
-	case 0x22: // " - string
+	case RAWSTRING_SIGN: // " - string
 		return d.parseString()
-	case 0x3A: // : - symbol
+	case SYMBOL_SIGN: // : - symbol
 		return d.parseSymbol()
-	case 0x3B: // ; - symbol symlink
+	case SYMBOL_LINK_SIGN: // ; - symbol symlink
 		return d.parseSymLink()
-	case 0x40: // @ - object link
-	case 0x49: // I - IVAR (encoded string or regexp)
+	case OBJECT_LINK_SIGN: // @ - object link
+		panic("not supported.")
+	case IVAR_SIGN: // I - IVAR (encoded string or regexp)
 		return d.parseIvar()
-	case 0x5B: // [ - array
-	case 0x6F: // o - object
-	case 0x7B: // { - hash
+	case ARRAY_SIGN: // [ - array
+		panic("not supported.")
+	case OBJECT_SIGN: // o - object
+		panic("not supported.")
+	case HASH_SIGN: // { - hash
 		return d.parseHash()
-	case 0x6C: // l - bignum
-	case 0x2F: // / - regexp
-	case 0x63: // c - class
-	case 0x6D: // m -module
+	case BIGNUM_SIGN: // l - bignum
+		panic("not supported.")
+	case REGEXP_SIGN: // / - regexp
+		panic("not supported.")
+	case CLASS_SIGN: // c - class
+		panic("not supported.")
+	case MODULE_SIGN: // m -module
+		panic("not supported.")
 	default:
 		return nil
 	}
-	panic("unsupported typecode: " + fmt.Sprintf("%#v", typ))
 }
 
 func (d *Decoder) parseInt() int {
@@ -69,7 +92,6 @@ func (d *Decoder) parseInt() int {
 	} else if -129 < c && c < -5 {
 		return c + 5
 	}
-
 	cInt8 := int8(b)
 	if cInt8 > 0 {
 		result = 0
@@ -113,34 +135,22 @@ func (d *Decoder) parseString() string {
 }
 
 type iVar struct {
-	str      string
-	encoding string
+	str string
 }
 
 func (d *Decoder) parseIvar() string {
 	str := d.unmarshal()
 
-	var encoding string
-	var symbol interface{}
-	lengthOfSymbolChar := d.parseInt()
+	symbolCharLen := d.parseInt()
 
-	if lengthOfSymbolChar == 1 {
-		symbol = d.unmarshal()
-		value := d.unmarshal()
-
-		d.objects = append(d.objects, value)
-
-		if symbol.(string) == "E" {
-			/*if value == true {
-				encoding = "utf8"
-			} else {
-				encoding = "ascii"
-			}*/
-		}
+	if symbolCharLen == 1 {
+		symbol := d.unmarshal().(string) // :E
+		_ = d.unmarshal()                // T
+		d.symbols = append(d.symbols, symbol)
 	}
 
 	strString := str.(string)
-	ivar := iVar{strString, encoding}
+	ivar := iVar{strString}
 	d.objects = append(d.objects, ivar)
 	return strString
 }
@@ -165,8 +175,7 @@ func (d *Decoder) Decode(v interface{}) error {
 	if err != nil {
 		return errors.New("cant decode MAJOR, MINOR version")
 	}
-
-	if major != SUPPORTED_MAJOR_VERSION || minor > SUPPORTED_MINOR_VERAION {
+	if major != SUPPORTED_MAJOR_VERSION || minor > SUPPORTED_MINOR_VERSION {
 		return errors.New("unsupported marshal version")
 	}
 
@@ -240,7 +249,7 @@ func NewEncoder(w io.Writer) *Encoder {
 }
 
 func (e *Encoder) Encode(v interface{}) error {
-	if _, err := e.w.Write([]byte{SUPPORTED_MAJOR_VERSION, SUPPORTED_MINOR_VERAION}); err != nil {
+	if _, err := e.w.Write([]byte{SUPPORTED_MAJOR_VERSION, SUPPORTED_MINOR_VERSION}); err != nil {
 		return err
 	}
 
@@ -264,10 +273,10 @@ func (e *Encoder) marshal(v interface{}) error {
 	case reflect.Bool:
 		return e.encBool(val.Bool())
 	case reflect.Int:
-		e.w.WriteByte('i')
+		e.w.WriteByte(FIXNUM_SIGN)
 		return e.encInt(int(val.Int()))
 	case reflect.String:
-		e.w.WriteByte('I')
+		e.w.WriteByte(IVAR_SIGN)
 		return e.encString(val.String())
 	}
 	return nil
@@ -275,9 +284,9 @@ func (e *Encoder) marshal(v interface{}) error {
 
 func (e *Encoder) encBool(val bool) error {
 	if val {
-		return e.w.WriteByte('T')
+		return e.w.WriteByte(TRUE_SIGN)
 	}
-	return e.w.WriteByte('F')
+	return e.w.WriteByte(FALSE_SIGN)
 }
 
 func (e *Encoder) encInt(i int) error {
@@ -325,7 +334,8 @@ func (e *Encoder) encInt(i int) error {
 	return nil
 }
 
-func (e *Encoder) encRawString(str string) error {
+func (e *Encoder) _encRawString(str string) error {
+	// | len (Fixnum) | stirng |
 	if err := e.encInt(len(str)); err != nil {
 		return err
 	}
@@ -335,27 +345,25 @@ func (e *Encoder) encRawString(str string) error {
 }
 
 func (e *Encoder) encString(str string) error {
-	if err := e.w.WriteByte('"'); err != nil {
+	// | I | " | RawString( string ) | FixNum( 1 ) | Symbol( E ) | True |
+	if _, err := e.w.Write([]byte{IVAR_SIGN, RAWSTRING_SIGN}); err != nil {
 		return err
 	}
-	if err := e.encRawString(str); err != nil {
+	if err := e._encRawString(str); err != nil {
 		return err
 	}
-
-	//symbol :E 1個 なので、 Fixnum(1)を書き出す
 	if err := e.encInt(1); err != nil {
 		return err
 	}
-
-	if err := e.encSymbol("E"); err != nil {
+	if err := e._encSymbol("E"); err != nil {
 		return err
 	}
 	return e.encBool(true)
 }
 
-func (e *Encoder) encSymbol(str string) error {
+func (e *Encoder) _encSymbol(str string) error {
 	if index, ok := e.symbols[str]; ok {
-		if err := e.w.WriteByte(';'); err != nil {
+		if err := e.w.WriteByte(SYMBOL_LINK_SIGN); err != nil {
 			return err
 		}
 		return e.encInt(index)
@@ -364,7 +372,7 @@ func (e *Encoder) encSymbol(str string) error {
 	e.symbols[str] = e.symbolsIndex
 	e.symbolsIndex++
 
-	if err := e.w.WriteByte(':'); err != nil {
+	if err := e.w.WriteByte(SYMBOL_SIGN); err != nil {
 		return err
 	}
 	if err := e.encInt(len(str)); err != nil {
@@ -374,6 +382,6 @@ func (e *Encoder) encSymbol(str string) error {
 	return err
 }
 
-func (e *Encoder) encObject() error {
+func (e *Encoder) _encObject() error {
 	return nil
 }
