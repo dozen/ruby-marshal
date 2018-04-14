@@ -46,7 +46,7 @@ func TestDecodeNull(t *testing.T) {
 	var v interface{}
 	NewDecoder(bytes.NewReader(b)).Decode(&v)
 	if v != nil {
-		t.Errorf("not nil. Type: %#T\tValue: %#v", v, v)
+		t.Errorf("not nil. Type: %T\tValue: %#v", v, v)
 	}
 }
 
@@ -58,7 +58,7 @@ func TestDecodeString(t *testing.T) {
 	var v string
 	NewDecoder(bytes.NewReader(b)).Decode(&v)
 	if v != "hoge" {
-		t.Errorf("not \"hoge\". Type: %#T\tValue: %#v", v, v)
+		t.Errorf("not \"hoge\". Type: %T\tValue: %#v", v, v)
 	}
 }
 
@@ -70,7 +70,7 @@ func TestDecodeSymName(t *testing.T) {
 	var v string
 	NewDecoder(bytes.NewReader(b)).Decode(&v)
 	if v != "name" {
-		t.Errorf("not \"name\". Type: %#T\tValue: %#v", v, v)
+		t.Errorf("not \"name\". Type: %T\tValue: %#v", v, v)
 	}
 }
 
@@ -82,7 +82,7 @@ func TestDecodeInt0(t *testing.T) {
 	var v int
 	NewDecoder(bytes.NewReader(b)).Decode(&v)
 	if v != 0 {
-		t.Errorf("not 0. Type: %#T\tValue: %#v", v, v)
+		t.Errorf("not 0. Type: %T\tValue: %#v", v, v)
 	}
 }
 
@@ -94,7 +94,7 @@ func TestDecodeInt1(t *testing.T) {
 	var v int
 	NewDecoder(bytes.NewReader(b)).Decode(&v)
 	if v != 1 {
-		t.Errorf("not 1. Type: %#T\tValue: %#v", v, v)
+		t.Errorf("not 1. Type: %T\tValue: %#v", v, v)
 	}
 }
 
@@ -106,7 +106,7 @@ func TestDecodeInt2(t *testing.T) {
 	var v int
 	NewDecoder(bytes.NewReader(b)).Decode(&v)
 	if v != 2 {
-		t.Errorf("not 2. Type: %#T\tValue: %#v", v, v)
+		t.Errorf("not 2. Type: %T\tValue: %#v", v, v)
 	}
 }
 
@@ -118,7 +118,7 @@ func TestDecodeIntM5(t *testing.T) {
 	var v int
 	NewDecoder(bytes.NewReader(b)).Decode(&v)
 	if v != -5 {
-		t.Errorf("not 5. Type: %#T\tValue: %#v", v, v)
+		t.Errorf("not 5. Type: %T\tValue: %#v", v, v)
 	}
 }
 
@@ -130,7 +130,7 @@ func TestDecodeInt777(t *testing.T) {
 	var v int
 	NewDecoder(bytes.NewReader(b)).Decode(&v)
 	if v != 777 {
-		t.Errorf("not 777. Type: %#T\tValue: %#v", v, v)
+		t.Errorf("not 777. Type: %T\tValue: %#v", v, v)
 	}
 }
 
@@ -142,7 +142,7 @@ func TestDecodeIntM777(t *testing.T) {
 	var v int
 	NewDecoder(bytes.NewReader(b)).Decode(&v)
 	if v != -777 {
-		t.Errorf("not -777. Type: %#T\tValue: %#v", v, v)
+		t.Errorf("not -777. Type: %T\tValue: %#v", v, v)
 	}
 }
 
@@ -154,7 +154,7 @@ func TestDecodeInt65537(t *testing.T) {
 	var v int
 	NewDecoder(bytes.NewReader(b)).Decode(&v)
 	if v != 65537 {
-		t.Errorf("not 0. Type: %#T\tValue: %#v", v, v)
+		t.Errorf("not 0. Type: %T\tValue: %#v", v, v)
 	}
 }
 
@@ -166,7 +166,7 @@ func TestDecodeIntM65537(t *testing.T) {
 	var v int
 	NewDecoder(bytes.NewReader(b)).Decode(&v)
 	if v != -65537 {
-		t.Errorf("not -65537. Type: %#T\tValue: %#v", v, v)
+		t.Errorf("not -65537. Type: %T\tValue: %#v", v, v)
 	}
 }
 
