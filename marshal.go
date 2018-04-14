@@ -62,7 +62,7 @@ func (d *Decoder) unmarshal() interface{} {
 	case IVAR_SIGN: // I - IVAR (encoded string or regexp)
 		return d.parseIvar()
 	case ARRAY_SIGN: // [ - array
-		panic("not supported.")
+		return d.parseArray()
 	case OBJECT_SIGN: // o - object
 		panic("not supported.")
 	case HASH_SIGN: // { - hash
@@ -152,6 +152,16 @@ func (d *Decoder) parseIvar() string {
 	ivar := iVar{strString}
 	d.objects = append(d.objects, ivar)
 	return strString
+}
+
+func (d *Decoder) parseArray() interface{} {
+	size := d.parseInt()
+	arr := make([]interface{}, size)
+
+	for i := 0; i < int(size); i++ {
+		arr[i] = d.unmarshal()
+	}
+	return arr
 }
 
 func (d *Decoder) parseHash() interface{} {
