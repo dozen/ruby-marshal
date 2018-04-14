@@ -1,4 +1,4 @@
-package ruby_marshal
+package rbmarshal
 
 import (
 	"bufio"
