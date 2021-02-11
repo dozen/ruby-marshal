@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"io"
+	"math/big"
 	"reflect"
 )
 
@@ -68,7 +69,7 @@ func (d *Decoder) unmarshal() interface{} {
 	case HASH_SIGN: // { - hash
 		return d.parseHash()
 	case BIGNUM_SIGN: // l - bignum
-		panic("not supported.")
+		return d.parseBignum()
 	case REGEXP_SIGN: // / - regexp
 		panic("not supported.")
 	case CLASS_SIGN: // c - class
@@ -108,6 +109,32 @@ func (d *Decoder) parseInt() int {
 		}
 	}
 	return result
+}
+
+func (d *Decoder) parseBignum() *big.Int {
+	sign, _ := d.r.ReadByte()
+
+	// "A long indicating the number of bytes of Bignum data follows,
+	// divided by two. Multiply the length by two to determine the
+	// number of bytes of data that follow."
+	// https://docs.ruby-lang.org/en/master/doc/marshal_rdoc.html#label-Bignum
+	bytelen := d.parseInt() * 2
+	bytes := make([]byte, bytelen)
+
+	// Read the bytes in reverse order so they're big-endian as required
+	// by the big.Int type.
+	for i := bytelen - 1; i >= 0; i-- {
+		b, _ := d.r.ReadByte()
+		bytes[i] = b
+	}
+
+	i := new(big.Int)
+	i.SetBytes(bytes)
+
+	if sign == '-' {
+		return i.Neg(i)
+	}
+	return i
 }
 
 func (d *Decoder) parseSymbol() string {
