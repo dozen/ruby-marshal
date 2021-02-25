@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"math/big"
 	"testing"
 )
 
@@ -36,6 +37,13 @@ const (
 	Hash2 = "04087b074922096e616d65063a0645544922097461726f063b0054492208616765063b0054691a"
 	// { user: { name: "matsumoto-yasunori", age: 57 }, job: "voice-actor" }
 	Hash3 = "04087b073a09757365727b073a096e616d654922176d617473756d6f746f2d796173756e6f7269063a0645543a08616765693e3a086a6f62492210766f6963652d6163746f72063b0754"
+)
+
+var (
+	// 1612874507
+	PosBignum = []byte{0x04, 0x08, 0x6c, 0x2b, 0x07, 0x0b, 0x83, 0x22, 0x60}
+	// -15241578750190521
+	NegBignum = []byte{0x04, 0x08, 0x6c, 0x2d, 0x09, 0xb9, 0xa3, 0x38, 0x97, 0x22, 0x26, 0x36, 0x00}
 )
 
 func TestDecodeNull(t *testing.T) {
@@ -208,6 +216,26 @@ func TestDecodeHash3(t *testing.T) {
 	NewDecoder(bytes.NewReader(b)).Decode(&v)
 
 	if !(v.Job == "voice-actor" && v.User.Name == "matsumoto-yasunori" && v.User.Age == 57) {
+		t.Errorf("not matched. Value: %#v", v)
+	}
+}
+
+func TestDecodeBignum(t *testing.T) {
+	var v *big.Int
+	NewDecoder(bytes.NewReader(PosBignum)).Decode(&v)
+
+	want := big.NewInt(1612874507)
+	if v.Cmp(want) != 0 {
+		t.Errorf("not matched. Value: %#v", v)
+	}
+}
+
+func TestDecodeNegativeBignum(t *testing.T) {
+	var v *big.Int
+	NewDecoder(bytes.NewReader(NegBignum)).Decode(&v)
+
+	want := big.NewInt(-15241578750190521)
+	if v.Cmp(want) != 0 {
 		t.Errorf("not matched. Value: %#v", v)
 	}
 }
