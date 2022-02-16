@@ -312,7 +312,6 @@ func (e *Encoder) marshal(v interface{}) error {
 		e.w.WriteByte(FIXNUM_SIGN)
 		return e.encInt(int(val.Int()))
 	case reflect.String:
-		e.w.WriteByte(IVAR_SIGN)
 		return e.encString(val.String())
 	}
 	return nil
