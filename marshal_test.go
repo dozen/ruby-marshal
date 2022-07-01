@@ -253,8 +253,8 @@ type User struct {
 func TestNewEncoder(t *testing.T) {
 	w := bytes.NewBuffer([]byte{})
 	e := NewEncoder(w)
-	v := "めっちゃ日本語"
-	if err := e.Encode(&v); err != nil {
+	input := "めっちゃ日本語"
+	if err := e.Encode(&input); err != nil {
 		t.Error(err.Error())
 	}
 
@@ -262,7 +262,25 @@ func TestNewEncoder(t *testing.T) {
 	fmt.Printf("encoded:\t%#v\n", encoded)
 	fmt.Printf("encoded:\t%x\n", encoded)
 
-	var str string
-	NewDecoder(bytes.NewReader(encoded)).Decode(&str)
-	fmt.Printf("%#x\n%#v\n", str, str)
+	var decoded string
+	NewDecoder(bytes.NewReader(encoded)).Decode(&decoded)
+	fmt.Printf("%#x\n%#v\n", decoded, decoded)
+
+	if decoded != input {
+		t.Error("decoded string does not match input")
+	}
+}
+
+func TestEncodeStringSlice(t *testing.T) {
+	input := []string{"a", "b"}
+	encodedWithRuby := "04085b0749220661063a06455449220662063b0054"
+
+	w := bytes.NewBuffer(nil)
+	if err := NewEncoder(w).Encode(input); err != nil {
+		t.Error(err.Error())
+	}
+
+	if hex.EncodeToString(w.Bytes()) != encodedWithRuby {
+		t.Error("Slice encoding does not match Ruby")
+	}
 }
