@@ -326,6 +326,23 @@ func (e *Encoder) marshal(v interface{}) error {
 				return err
 			}
 		}
+	case reflect.Map:
+		e.w.WriteByte(HASH_SIGN)
+		err := e.encInt(val.Len())
+		if err != nil {
+			return err
+		}
+		iter := val.MapRange()
+		for iter.Next() {
+			err = e.marshal(iter.Key().Interface())
+			if err != nil {
+				return err
+			}
+			err = e.marshal(iter.Value().Interface())
+			if err != nil {
+				return err
+			}
+		}
 	}
 	return fmt.Errorf("cannot marshal value of type %v", typ.Kind())
 }
