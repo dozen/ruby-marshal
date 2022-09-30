@@ -284,3 +284,17 @@ func TestEncodeStringSlice(t *testing.T) {
 		t.Error("Slice encoding does not match Ruby")
 	}
 }
+
+func TestEncodeMapStringString(t *testing.T) {
+	input := map[string]string{"oasis": "disbanded"}
+	encodedWithRuby := "04087b0649220a6f61736973063a06455449220e64697362616e646564063b0054"
+
+	w := bytes.NewBuffer(nil)
+	if err := NewEncoder(w).Encode(input); err != nil {
+		t.Error(err.Error())
+	}
+
+	if hex.EncodeToString(w.Bytes()) != encodedWithRuby {
+		t.Error("Map encoding does not match Ruby")
+	}
+}
