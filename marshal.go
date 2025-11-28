@@ -60,13 +60,13 @@ func (d *Decoder) unmarshal() interface{} {
 	case SYMBOL_LINK_SIGN: // ; - symbol symlink
 		return d.parseSymLink()
 	case OBJECT_LINK_SIGN: // @ - object link
-		panic("not supported.")
+		panic("Object link not supported.")
 	case IVAR_SIGN: // I - IVAR (encoded string or regexp)
 		return d.parseIvar()
 	case ARRAY_SIGN: // [ - array
 		return d.parseArray()
 	case OBJECT_SIGN: // o - object
-		panic("not supported.")
+		panic("Object not supported.")
 	case HASH_SIGN: // { - hash
 		return d.parseHash()
 	case BIGNUM_SIGN: // l - bignum
