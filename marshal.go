@@ -157,7 +157,7 @@ func (d *Decoder) parseObjectLink() interface{} {
 func (d *Decoder) parseString() string {
 	len := d.parseInt()
 	str := make([]byte, len)
-	d.r.Read(str)
+	io.ReadFull(d.r, str)
 	return string(str)
 }
 
