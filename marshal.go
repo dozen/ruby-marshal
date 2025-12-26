@@ -60,13 +60,13 @@ func (d *Decoder) unmarshal() interface{} {
 	case SYMBOL_LINK_SIGN: // ; - symbol symlink
 		return d.parseSymLink()
 	case OBJECT_LINK_SIGN: // @ - object link
-		panic("not supported.")
+		return d.parseObjectLink()
 	case IVAR_SIGN: // I - IVAR (encoded string or regexp)
 		return d.parseIvar()
 	case ARRAY_SIGN: // [ - array
 		return d.parseArray()
 	case OBJECT_SIGN: // o - object
-		panic("not supported.")
+		panic("Object not supported.")
 	case HASH_SIGN: // { - hash
 		return d.parseHash()
 	case BIGNUM_SIGN: // l - bignum
@@ -186,6 +186,10 @@ func (d *Decoder) parseArray() interface{} {
 	size := d.parseInt()
 	arr := make([]interface{}, size)
 
+	// hack, but makes referencing iVars work because offsets are correct
+	ivar := iVar{"(array)"}
+	d.objects = append(d.objects, ivar)
+
 	for i := 0; i < int(size); i++ {
 		arr[i] = d.unmarshal()
 	}
@@ -196,10 +200,19 @@ func (d *Decoder) parseHash() interface{} {
 	size := d.parseInt()
 	hash := make(map[string]interface{}, size)
 
+	// hack, but makes referencing iVars work because offsets are correct
+	ivar := iVar{"(hash)"}
+	d.objects = append(d.objects, ivar)
+
 	for i := 0; i < int(size); i++ {
 		key := d.unmarshal()
+
+		keyString := key.(string)
+		ivar := iVar{keyString}
+		d.objects = append(d.objects, ivar)
+
 		value := d.unmarshal()
-		hash[key.(string)] = value
+		hash[keyString] = value
 	}
 
 	return hash
